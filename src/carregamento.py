@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import BinaryIO
 
 import pandas as pd
 
@@ -9,27 +8,25 @@ COLUNAS_OBRIGATORIAS = {
     "equipe",
     "tipo_servico",
     "hora_inicio",
+    "status",
+}
+
+COLUNAS_RECOMENDADAS = {
     "hora_fim",
     "km_inicial",
     "km_final",
     "km_informada",
-    "status",
     "localidade",
     "observacao",
 }
 
 
 class ErroCarregamento(Exception):
-    """Erro compreensível ocorrido durante o carregamento do arquivo."""
+    """Erro compreensível ocorrido durante o carregamento."""
 
 
-def validar_extensao(nome_arquivo: str) -> None:
-    """
-    Verifica se o arquivo possui a extensão .xlsx.
-
-    Não retorna nenhum valor quando a extensão é válida.
-    Levanta ErroCarregamento quando a extensão é inválida.
-    """
+def validar_extensao(nome_arquivo):
+    """Verifica se o arquivo possui a extensão xlsx."""
 
     extensao = Path(nome_arquivo).suffix.lower()
 
@@ -40,62 +37,15 @@ def validar_extensao(nome_arquivo: str) -> None:
         )
 
 
-def identificar_colunas_ausentes(
-    dataframe: pd.DataFrame,
-) -> list[str]:
-    """Retorna uma lista ordenada das colunas obrigatórias ausentes."""
-
-    colunas_encontradas = set(dataframe.columns)
-
-    colunas_ausentes = (
-        COLUNAS_OBRIGATORIAS - colunas_encontradas
-    )
-
-    return sorted(colunas_ausentes)
-
-
-def validar_colunas(dataframe: pd.DataFrame) -> None:
-    """
-    Verifica se todas as colunas obrigatórias estão presentes.
-
-    Levanta ErroCarregamento quando alguma coluna está ausente.
-    """
-
-    colunas_ausentes = identificar_colunas_ausentes(
-        dataframe
-    )
-
-    if colunas_ausentes:
-        lista_colunas = "\n".join(
-            f"- {coluna}"
-            for coluna in colunas_ausentes
-        )
-
-        raise ErroCarregamento(
-            "Não foi possível analisar o arquivo.\n\n"
-            "Colunas ausentes:\n"
-            f"{lista_colunas}"
-        )
-
-
-def carregar_planilha(
-    arquivo: str | Path | BinaryIO,
-    nome_arquivo: str | None = None,
-) -> pd.DataFrame:
-    """
-    Carrega um arquivo Excel e verifica suas colunas.
-
-    O parâmetro arquivo pode ser:
-    - um caminho local;
-    - um arquivo enviado pelo Streamlit;
-    - um objeto binário compatível com pandas.
-
-    O nome_arquivo é necessário para verificar a extensão de
-    arquivos enviados pela interface.
-    """
+def ler_planilha(
+    arquivo,
+    nome_arquivo=None,
+):
+    """Lê o Excel sem exigir nomes padronizados nas colunas."""
 
     if isinstance(arquivo, (str, Path)):
         caminho = Path(arquivo)
+
         validar_extensao(caminho.name)
 
         if not caminho.exists():
@@ -134,6 +84,97 @@ def carregar_planilha(
             "A planilha está vazia."
         )
 
-    validar_colunas(dataframe)
+    return dataframe
+
+
+def identificar_colunas_ausentes(dataframe):
+    """Retorna as colunas obrigatórias ausentes."""
+
+    colunas_encontradas = set(
+        dataframe.columns
+    )
+
+    colunas_ausentes = (
+        COLUNAS_OBRIGATORIAS
+        - colunas_encontradas
+    )
+
+    return sorted(colunas_ausentes)
+
+
+def identificar_colunas_recomendadas_ausentes(
+    dataframe,
+):
+    """Retorna as colunas recomendadas ausentes."""
+
+    colunas_encontradas = set(
+        dataframe.columns
+    )
+
+    colunas_ausentes = (
+        COLUNAS_RECOMENDADAS
+        - colunas_encontradas
+    )
+
+    return sorted(colunas_ausentes)
+
+
+def validar_colunas(dataframe):
+    """Verifica se todas as colunas obrigatórias existem."""
+
+    colunas_ausentes = identificar_colunas_ausentes(
+        dataframe
+    )
+
+    if not colunas_ausentes:
+        return
+
+    lista_colunas = "\n".join(
+        f"- {coluna}"
+        for coluna in colunas_ausentes
+    )
+
+    raise ErroCarregamento(
+        "Não foi possível analisar o arquivo.\n\n"
+        "Campos obrigatórios ainda não associados:\n"
+        f"{lista_colunas}"
+    )
+
+
+def adicionar_colunas_recomendadas(dataframe):
+    """Adiciona como vazias as colunas recomendadas ausentes."""
+
+    dataframe_completo = dataframe.copy()
+
+    colunas_ausentes = (
+        identificar_colunas_recomendadas_ausentes(
+            dataframe_completo
+        )
+    )
+
+    for coluna in colunas_ausentes:
+        dataframe_completo[coluna] = pd.NA
+
+    return dataframe_completo
+
+
+def carregar_planilha(
+    arquivo,
+    nome_arquivo=None,
+):
+    """Lê, valida e prepara uma planilha já padronizada."""
+
+    dataframe = ler_planilha(
+        arquivo,
+        nome_arquivo=nome_arquivo,
+    )
+
+    validar_colunas(
+        dataframe
+    )
+
+    dataframe = adicionar_colunas_recomendadas(
+        dataframe
+    )
 
     return dataframe

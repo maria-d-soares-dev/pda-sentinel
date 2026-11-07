@@ -89,6 +89,7 @@ try:
 
     else:
         colunas_exibidas = [
+            "celula",
             "id_linha",
             "id_servico",
             "codigo_problema",
