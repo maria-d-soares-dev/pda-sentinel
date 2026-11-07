@@ -36,30 +36,110 @@ SEVERIDADES = {
 COLUNAS_ALERTAS = [
     "id_linha",
     "id_servico",
+    "coluna",
+    "celula",
     "codigo_problema",
     "severidade",
     "mensagem",
     "regra",
 ]
+COLUNAS_EXCEL = {
+    "id_servico": "A",
+    "data_servico": "B",
+    "equipe": "C",
+    "tipo_servico": "D",
+    "hora_inicio": "E",
+    "hora_fim": "F",
+    "km_inicial": "G",
+    "km_final": "H",
+    "km_informada": "I",
+    "status": "J",
+    "localidade": "K",
+    "observacao": "L",
+}
 
+CAMPOS_POR_PROBLEMA = {
+    "POSSIVEL_DUPLICIDADE": [
+        "id_servico",
+        "data_servico",
+        "equipe",
+    ],
+    "HORARIO_INVALIDO": [
+        "hora_inicio",
+        "hora_fim",
+    ],
+    "DURACAO_ATIPICA": [
+        "hora_inicio",
+        "hora_fim",
+    ],
+    "HODOMETRO_INVALIDO": [
+        "km_inicial",
+        "km_final",
+    ],
+    "DIVERGENCIA_QUILOMETRAGEM": [
+        "km_inicial",
+        "km_final",
+        "km_informada",
+    ],
+    "CONCLUSAO_INCOMPLETA": [
+        "status",
+        "hora_fim",
+    ],
+    "QUILOMETRAGEM_ATIPICA": [
+        "km_inicial",
+        "km_final",
+        "km_informada",
+    ],
+    "SOBREPOSICAO_DE_AGENDA": [
+        "hora_inicio",
+        "hora_fim",
+    ],
+    "EXCECAO_SEM_JUSTIFICATIVA": [
+        "observacao",
+    ],
+}
 
 def criar_alerta(
     linha,
     codigo_problema,
     mensagem,
     regra,
+    campo=None,
 ):
-    """Cria um alerta seguindo a estrutura padrão."""
+    """Cria um alerta com a localização correspondente no Excel."""
+
+    numero_linha = int(linha["id_linha"])
+
+    if campo is not None:
+        campos_afetados = [campo]
+
+    else:
+        campos_afetados = CAMPOS_POR_PROBLEMA.get(
+            codigo_problema,
+            [],
+        )
+
+    colunas_afetadas = [
+        COLUNAS_EXCEL[nome_campo]
+        for nome_campo in campos_afetados
+        if nome_campo in COLUNAS_EXCEL
+    ]
+
+    celulas_afetadas = [
+        f"{letra}{numero_linha}"
+        for letra in colunas_afetadas
+    ]
 
     return {
-        "id_linha": linha["id_linha"],
+        "id_linha": numero_linha,
         "id_servico": linha["id_servico"],
+        "coluna": ", ".join(campos_afetados),
+        "celula": ", ".join(celulas_afetadas),
         "codigo_problema": codigo_problema,
         "severidade": SEVERIDADES[codigo_problema],
         "mensagem": mensagem,
         "regra": regra,
     }
-
 
 def campo_esta_ausente(valor):
     """Verifica se um valor está ausente ou contém somente espaços."""
@@ -92,6 +172,7 @@ def validar_campos_obrigatorios(dataframe):
                         "não foi informado."
                     ),
                     regra="Regra 1: campos obrigatórios vazios",
+                    campo=campo,
                 )
 
                 alertas.append(alerta)
