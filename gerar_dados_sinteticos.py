@@ -168,27 +168,21 @@ def inserir_campos_ausentes(df):
         df.loc[indice, coluna] = None
 
 
-def inserir_duplicidades(df):
-    """Cria oito registros com a mesma combinação de ID, data e equipe."""
+def inserir_duplicidades(dataframe):
+    """Cria quatro pares, totalizando oito registros duplicados."""
 
-    for indice in range(10, 18):
-        linha_original = indice - 1
+    pares = [
+        (10, 11),
+        (12, 13),
+        (14, 15),
+        (16, 17),
+    ]
 
-        df.loc[indice, "id_servico"] = df.loc[
-            linha_original,
-            "id_servico",
-        ]
-
-        df.loc[indice, "data_servico"] = df.loc[
-            linha_original,
-            "data_servico",
-        ]
-
-        df.loc[indice, "equipe"] = df.loc[
-            linha_original,
-            "equipe",
-        ]
-
+    for indice_original, indice_copia in pares:
+        for coluna in COLUNAS:
+            dataframe.loc[indice_copia, coluna] = (
+                dataframe.loc[indice_original, coluna]
+            )
 
 def inserir_horarios_invalidos(df):
     """Cria oito horários finais anteriores aos iniciais."""
