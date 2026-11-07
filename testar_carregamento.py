@@ -2,9 +2,13 @@ from src.carregamento import (
     ErroCarregamento,
     carregar_planilha,
 )
+from src.indicadores import (
+    calcular_indicadores,
+    contar_por_problema,
+    gerar_resumo_indicadores,
+)
 from src.limpeza import limpar_dados
 from src.validacoes import executar_validacoes
-
 
 CAMINHO_ARQUIVO = "data/exemplo_operacional.xlsx"
 
@@ -22,61 +26,98 @@ try:
         dataframe_limpo
     )
 
+    indicadores = calcular_indicadores(
+        dataframe_limpo,
+        alertas,
+    )
+
+    problemas = contar_por_problema(
+        alertas
+    )
+
+    resumo = gerar_resumo_indicadores(
+        dataframe_limpo,
+        alertas,
+    )
+
     print("Análise concluída com sucesso.")
 
     print(
-        f"Registros analisados: {len(dataframe_limpo)}"
+        f"Registros analisados: "
+        f"{indicadores['registros_analisados']}"
     )
 
     print(
-        f"Total de alertas: {len(alertas)}"
+        f"Registros com alerta: "
+        f"{indicadores['registros_com_alerta']}"
     )
-
-    print("\nQuantidade por problema:")
 
     print(
-        alertas["codigo_problema"]
-        .value_counts()
-        .to_string()
+        f"Total de alertas: "
+        f"{indicadores['total_alertas']}"
     )
-
-
-
-    print("\nPossíveis duplicidades:")
-
-    duplicidades = alertas[
-        alertas["codigo_problema"]
-        == "POSSIVEL_DUPLICIDADE"
-    ]
 
     print(
-        duplicidades[
-            [
-                "id_linha",
-                "id_servico",
-                "codigo_problema",
-                "mensagem",
-            ]
-        ].to_string(index=False)
+        f"Alertas críticos: "
+        f"{indicadores['alertas_criticos']}"
     )
-    print("\nHodômetros inválidos:")
 
-    hodometros_invalidos = alertas[
-        alertas["codigo_problema"]
-        == "HODOMETRO_INVALIDO"
+    print(
+        f"Alertas de atenção: "
+        f"{indicadores['alertas_atencao']}"
+    )
+
+    print(
+        f"Alertas informativos: "
+        f"{indicadores['alertas_informativos']}"
+    )
+
+    print("\nQuantidade de alertas por problema:")
+
+    if problemas.empty:
+        print("Nenhum alerta encontrado.")
+
+    else:
+        print(
+            problemas.to_string(index=False)
+        )
+
+    print("\nPrimeiros 20 alertas:")
+
+    if alertas.empty:
+        print("Nenhum alerta encontrado.")
+
+    else:
+        colunas_exibidas = [
+            "id_linha",
+            "id_servico",
+            "codigo_problema",
+            "severidade",
+            "mensagem",
         ]
 
-    print(
-        hodometros_invalidos[
-            [
-                "id_linha",
-                "id_servico",
-                "codigo_problema",
-                "mensagem",
+        print(
+            alertas[
+                colunas_exibidas
             ]
-        ].to_string(index=False)
+            .head(20)
+            .to_string(index=False)
+        )
+
+    print("\nResumo para exportação:")
+
+    print(
+        resumo.to_string(index=False)
     )
 
-
 except ErroCarregamento as erro:
+    print("Erro ao carregar a planilha:")
+    print(erro)
+
+except KeyError as erro:
+    print("Erro durante o processamento dos dados:")
+    print(f"Coluna não encontrada: {erro}")
+
+except (TypeError, ValueError) as erro:
+    print("Erro durante a análise dos dados:")
     print(erro)
